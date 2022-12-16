@@ -13,7 +13,7 @@ The image attribute features can be downloaded from [here](https://ibm.box.com/s
 [LXMERT](https://github.com/airsplay/lxmert/blob/0db1182b9030da3ce41f17717cc628e1cd0a95d5/src/lxrt/modeling.py)
 
 
-To-Do
+## To-Do
 
 - [ ] Extract intermediate CLIP resent features (Adnan)
 - [ ] LXMERT integration with FIQ 
