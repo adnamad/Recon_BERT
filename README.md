@@ -19,7 +19,7 @@ The image attribute features can be downloaded from [here](https://ibm.box.com/s
 ## To-Do
 
 - [ ] Extract intermediate CLIP resent features (Adnan)
-- [ ] LXMERT integration with FIQ 
+- [ ] LXMERT integration with FIQ (Srinjay)
 - [ ] Image Masking logic 
 - [ ] Implement Decoder
 - [ ] Loss and final integration
