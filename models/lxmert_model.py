@@ -9,7 +9,6 @@ import tarfile
 import tempfile
 import sys
 from io import open
-
 import torch
 from torch import nn
 from torch.nn import CrossEntropyLoss, SmoothL1Loss
