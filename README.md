@@ -1,5 +1,8 @@
 # Recon_BERT
 
+##Project Doc
+Project details with experiments: https://docs.google.com/document/d/1aQyJ4R7a1U1tSIOxoBDfknMo7oPmgC5kw3E17XylDhI/edit?usp=sharing
+
 ## Dataset 
 Fashion IQ is a dataset to facilitate research on natural language based interactive image retrieval.
 The images can be downloaded from [here](https://github.com/hongwang600/fashion-iq-metadata). 
