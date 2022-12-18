@@ -1,3 +1,0 @@
-[submodule "models/CLIP"]
-	path = models/CLIP
-	url = https://github.com/openai/CLIP.git
