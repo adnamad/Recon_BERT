@@ -1,3 +1,0 @@
-[submodule "models/external"]
-	path = models/external
-	url = https://github.com/openai/CLIP.git
