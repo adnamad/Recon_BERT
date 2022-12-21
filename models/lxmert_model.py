@@ -48,7 +48,7 @@ class bert_attention(torch.nn.Module):
     def __init__(self,cfg,ctx_dim=None):
         super().__init__()
         if cfg.hidden_size%cfg.num_attention_heads!=0:
-            raise ValueError("The hidden size (%d) is not a multiple of the number of attention""heads (%d)"%(cfg.hidden_size,              cfg.num_attention_heads))
+            raise ValueError("The hidden size (%d) is not a multiple of the number of attention""heads (%d)"%(cfg.hidden_size,cfg.num_attention_heads))
         self.num_attnetion_heads=cfg.num_attention_heads
         self.attention_head_size=int(cfg.hidden_size/cfg.num_attention_heads)
         self.all_head_size=self.num_attnetion_heads*self.attention_head_size
@@ -89,7 +89,7 @@ class bert_attnoutput(torch.nn.Module):
     def __init__(self,cfg):
         super(bert_attnoutput,self).__init__()
         self.dense=torch.nn.Linear(cfg.hidden_size,cfg.hidden_size)
-        self.LayerNorm=BertLayerNorm(cfg.hidden_output_prob)
+        self.LayerNorm=BertLayerNorm(cfg.hidden_size,eps=1e-12)
         self.dropout=torch.nn.Dropout(cfg.hidden_dropout_prob)
     
     def forward(self,hidden_states,input_tensor):
@@ -210,8 +210,8 @@ class LXRTXLayer(torch.nn.Module):
 class VisualFeatEncoder(torch.nn.Module):
     def __init__(self,cfg):
         super().__init__()
-        feat_dim=2048
-        pos_dim=4
+        feat_dim=cfg.visual_feat_dim
+        pos_dim=cfg.visual_pos_dim
         
         #object encoding
         self.visn_fc=torch.nn.Linear(feat_dim,cfg.hidden_size)
@@ -237,16 +237,16 @@ class LXRTEncoder(torch.nn.Module):
         self.visn_fc=VisualFeatEncoder(cfg)
         #bert layers
         #the number is borrowed from lxmert paper.
-        self.num_l_layers=9#check config
-        self.num_x_layers=5#check config
-        self.num_r_layers=5#check config
+        self.num_l_layers=cfg.l_layers#check config
+        self.num_x_layers=cfg.x_layers#check config
+        self.num_r_layers=cfg.r_layers#check config
 
         self.layer=torch.nn.ModuleList([bertlayer(cfg) for _ in range(self.num_l_layers)])#language
         self.x_layers=torch.nn.ModuleList([LXRTXLayer(cfg) for _ in range(self.num_x_layers)])#cross
-        self.r_layrs=torch.nn.ModuleList([bertlayer(cfg) for _ in range(self.num_r_layers)])#image/relation
+        self.r_layers=torch.nn.ModuleList([bertlayer(cfg) for _ in range(self.num_r_layers)])#image/relation
     
     def forward(self,lang_feats,lang_attention_mask,visn_feats,visn_attention_mask=None):
-        #first get image embeddings and then language embeddings but bert extracts language embeddings before this module.
+        #first get image embeddings and then language embeddings but bert extracts language embeddings before this module separately.
         visn_feats=self.visn_fc(visn_feats)
 
         #language layers
@@ -275,7 +275,8 @@ class bertpooler(torch.nn.Module):
 
 class LXRTModel(torch.nn.Module):
     def __init__(self,cfg):
-        super().__init__(cfg)
+        super(LXRTModel,self).__init__()
+        self.cfg=cfg
         self.embeddings=bert_embedding(cfg)#get lang embeddings,for image embeddings are obtained within the LXRTEncoder 
         self.encoder=LXRTEncoder(cfg)
         self.pooler=bertpooler(cfg)
@@ -328,3 +329,31 @@ class LXRTModel(torch.nn.Module):
         pooled_output=self.pooler(lang_feats)
         return((lang_feats,visn_feats),pooled_output)
     
+
+class lxrt_featextraction(torch.nn.Module):
+    def __init__(self,cfg,mode="lxr"):
+        super(lxrt_featextraction,self).__init__()
+        self.bert=LXRTModel(cfg)
+        self.mode=mode
+        self.apply(self.init_bert_weights)
+        
+    def init_bert_weights(self,module):
+        if isinstance(module,(torch.nn.Linear,torch.nn.Embedding)):
+            module.weight.data.normal_(mean=0.0,std=self.cfg.initializer_range)
+        elif isinstance(module,BertLayerNorm):
+            module.bias.data.zero_()
+            module.weight.data.fill_(1.0)
+        if isinstance(module,torch.nn.Linear) and module.bias is not None:
+            module.bias.data.zero_()
+    
+    def forward(self,input_ids,token_type_ids,attention_mask=None,visual_feats=None,visual_attention_mask=None):
+        feat_seq,pooled_output=self.bert(input_ids,token_type_ids,attention_mask,visual_feats=visual_feats,visual_attention_mask=visual_attention_mask)
+
+        if self.mode=="x":
+            return (pooled_output) #yellow block in model figure (see paper)
+        elif "x" in self.mode and ("l" in self.mode or "r" in self.mode):
+            return (feat_seq,pooled_output)
+        elif "l" in self.mode or "r" in self.mode:
+            return (feat_seq)
+        else:
+            return (None)
